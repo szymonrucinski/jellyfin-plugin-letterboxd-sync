@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
 using LetterboxdSync.Configuration;
-using Jellyfin.Data.Entities;
+using Jellyfin.Database.Implementations.Entities;
 using Jellyfin.Data.Enums;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
@@ -92,8 +92,9 @@ public class LetterboxdSyncTask : IScheduledTask
             {
                 int tmdbid;
                 string title = movie.OriginalTitle;
-                bool favorite = movie.IsFavoriteOrLiked(user) && account.SendFavorite;
-                DateTime? viewingDate = _userDataManager.GetUserData(user, movie).LastPlayedDate;
+                var userData = _userDataManager.GetUserData(user, movie);
+                bool favorite = movie.IsFavoriteOrLiked(user, userData) && account.SendFavorite;
+                DateTime? viewingDate = userData.LastPlayedDate;
                 string[] tags = new List<string>() { "" }.ToArray();
 
                 if (int.TryParse(movie.GetProviderId(MetadataProvider.Tmdb), out tmdbid))
@@ -158,7 +159,7 @@ public class LetterboxdSyncTask : IScheduledTask
             {
                 new TaskTriggerInfo
                 {
-                    Type = TaskTriggerInfo.TriggerInterval,
+                    Type = TaskTriggerInfoType.IntervalTrigger,
                     IntervalTicks = TimeSpan.FromDays(1).Ticks
                 }
             };

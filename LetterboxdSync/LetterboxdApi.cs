@@ -99,7 +99,7 @@ public class LetterboxdApi
             var htmlDoc = new HtmlDocument();
             htmlDoc.LoadHtml(await res.Content.ReadAsStringAsync().ConfigureAwait(false));
 
-            var span = htmlDoc.DocumentNode.SelectSingleNode("//div[@data-film-slug='" + filmSlug + "']");
+            var span = htmlDoc.DocumentNode.SelectSingleNode("//div[@data-item-slug='" + filmSlug + "']");
             if (span == null)
                 throw new Exception("The search returned no results");
 
@@ -164,39 +164,38 @@ public class LetterboxdApi
             if (trReviews == null)
                 return null;
 
+            string currentMonth = string.Empty;
+            string currentYear = string.Empty;
+
             foreach (var trReview in trReviews)
             {
-                var tdDayReview = trReview.SelectSingleNode("//td[contains(@class, 'td-day')]");
-                if (tdDayReview == null)
-                    break;
+                // Get month and year from the monthdate column (only first row of each month has it)
+                var monthNode = trReview.SelectSingleNode(".//td[contains(@class, 'col-monthdate')]//a[@class='month']");
+                var yearNode = trReview.SelectSingleNode(".//td[contains(@class, 'col-monthdate')]//a[@class='year']");
 
-                var linkNode = tdDayReview.SelectSingleNode(".//a");
-                if (linkNode == null)
-                    break;
+                if (monthNode != null)
+                    currentMonth = monthNode.InnerText.Trim();
+                if (yearNode != null)
+                    currentYear = yearNode.InnerText.Trim();
 
-                string linkReview = $"https://letterboxd.com{linkNode.GetAttributeValue("href", "")}";
+                // Get day from the daydate column
+                var dayNode = trReview.SelectSingleNode(".//td[contains(@class, 'col-daydate')]//a[@class='daydate']");
+                if (dayNode == null)
+                    continue;
 
-                response = await client.GetStringAsync(linkReview).ConfigureAwait(false);
+                string day = dayNode.InnerText.Trim();
 
-                htmlDoc = new HtmlDocument();
-                htmlDoc.LoadHtml(response);
-
-                var section = htmlDoc.DocumentNode.SelectSingleNode("//section[@class='film-viewing-info-wrapper']");
-                if (section == null)
-                    break;
-
-                var meta = section.SelectSingleNode("meta");
-                if (meta == null)
-                    break;
-
-                var date = meta.GetAttributeValue("content", string.Empty);
-                if (date == null)
-                    break;
-
-                lstDates.Add(DateTime.Parse(date, CultureInfo.InvariantCulture));
+                if (!string.IsNullOrEmpty(currentMonth) && !string.IsNullOrEmpty(currentYear) && !string.IsNullOrEmpty(day))
+                {
+                    string dateStr = $"{day} {currentMonth} {currentYear}";
+                    if (DateTime.TryParse(dateStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime parsedDate))
+                    {
+                        lstDates.Add(parsedDate);
+                    }
+                }
             }
 
-            return lstDates.Max();
+            return lstDates.Count > 0 ? lstDates.Max() : null;
         }
     }
 
