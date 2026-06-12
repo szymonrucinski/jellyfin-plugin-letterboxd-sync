@@ -1,0 +1,18 @@
+services:
+  jellyfin-auto-collections:
+    image: ghcr.io/ghomashudson/jellyfin-auto-collections:latest
+    container_name: jellyfin-auto-collections
+    environment:
+      - JELLYFIN_SERVER_URL=http://jellyfin:8096
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY}
+      - JELLYFIN_USER_ID=${JELLYFIN_USER_ID}
+      - CRONTAB=0 4 * * *  # Run daily at 4 AM
+      - TZ=${TZ}
+    volumes:
+      - ./config:/app/config
+    restart: unless-stopped
+
+networks:
+  default:
+    name: jellyfin_default
+    external: true
